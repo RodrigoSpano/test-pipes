@@ -1,0 +1,30 @@
+name: test Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      run_second_step:
+        description: "Run second step"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  first-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: First Step
+        run: echo "first step"
+
+  second-job:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_second_step == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Second Step
+        run: echo "second step"
