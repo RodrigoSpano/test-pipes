@@ -23,7 +23,7 @@ jobs:
         run: echo "first step"
 
   second-job:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_second_step == 'true'
+    if: github.event.inputs.run_second_step == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Second Step
