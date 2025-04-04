@@ -18,6 +18,8 @@ on:
 jobs:
   first-job:
     runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
     steps:
       - name: First Step
         run: echo "first step"
