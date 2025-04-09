@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - qa
   pull_request:
     branches:
-      -main
+      - main
+      - qa
   workflow_dispatch:
     inputs:
       run_second_step:
@@ -19,13 +21,30 @@ on:
           - "false"
 
 jobs:
+  Build:
+    runs-on: ubuntu-latest
+    outputs:
+      TF_ENVIRONMENT: ${{ steps.setvars.outputs.TF_ENVIRONMENT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set Variables
+        id: setvars
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "TF_ENVIRONMENT=prod" >> $GITHUB_ENV
+          else 
+            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_ENV
+          fi
+
   first-job:
     runs-on: ubuntu-latest
-    environment: 
+    needs: [Build]
+    environment:
       name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
     steps:
       - name: First Step
-        run: echo "first step"
+        run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
 
   second-job:
     if: github.event.inputs.run_second_step == 'true'
