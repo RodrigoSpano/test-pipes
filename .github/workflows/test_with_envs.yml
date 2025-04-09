@@ -1,4 +1,4 @@
-name: test Pipeline
+name: test with envs
 
 on:
   push:
@@ -23,8 +23,6 @@ on:
 jobs:
   Build:
     runs-on: ubuntu-latest
-    outputs:
-      TF_ENVIRONMENT: ${{ steps.setvars.outputs.TF_ENVIRONMENT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -32,9 +30,9 @@ jobs:
         id: setvars
         run: |
           if [[ "${{ github.base_ref }}" == "main" ]]; then
-            echo "TF_ENVIRONMENT=prod" >> $GITHUB_OUTPUT
+            echo "TF_ENVIRONMENT=prod" >> $GITHUB_ENV
           else 
-            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_OUTPUT
+            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_ENV
           fi
 
   first-job:
@@ -44,12 +42,7 @@ jobs:
       name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
     steps:
       - name: First Step
-        run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
-
-  test-job:
-    uses: ./reusable.yml@main
-    with:
-      pepito: "paco"
+        run: echo "${{ env.TF_ENVIRONMENT }}"
 
   second-job:
     if: github.event.inputs.run_second_step == 'true'
