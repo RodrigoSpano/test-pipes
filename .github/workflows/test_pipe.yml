@@ -32,9 +32,9 @@ jobs:
         id: setvars
         run: |
           if [[ "${{ github.base_ref }}" == "main" ]]; then
-            echo "TF_ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "TF_ENVIRONMENT=prod" >> $GITHUB_OUTPUT
           else 
-            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_ENV
+            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_OUTPUT
           fi
 
   first-job:
