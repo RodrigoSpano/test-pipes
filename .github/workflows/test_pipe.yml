@@ -47,6 +47,7 @@ jobs:
         run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
 
   test-job:
+    if: github.event.inputs.run_second_step == 'true'
     uses: ./reusable.yml@main
     with:
       pepito: "paco"
