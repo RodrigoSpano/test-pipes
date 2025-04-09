@@ -1,0 +1,19 @@
+name: reusable
+
+on:
+  workflow_call:
+    inputs:
+      pepito:
+        type: string
+        description: input test
+        required: true
+
+jobs:
+  test:
+    name: test workflow
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: step1
+        run: echo "${{ inputs.pepito }}"

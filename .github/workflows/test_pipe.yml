@@ -17,10 +17,9 @@ on:
 
 jobs:
   first-job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: First Step
-        run: echo "first step"
+    uses: ./reusable.yml@main
+    with:
+      pepito: "paco"
 
   second-job:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_second_step == 'true'
