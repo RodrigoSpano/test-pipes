@@ -1,0 +1,55 @@
+name: Snyk scan
+
+on:
+  push:
+    branches:
+      - iac-test
+
+permissions: write-all
+
+jobs:
+  scan-iac:
+    name: snyk scan IaC
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: snyk/actions/setup@master
+      - name: Run Snyk to check configuration files for security issues
+        continue-on-error: true
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          file: config/terraform.develop.tfvars
+
+      - name: Snyk scan code
+        continue-on-error: true
+        run: snyk code test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # visualize-changes:
+  #   name: "Visualize Infrastructure changes"
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push'
+  #   defaults:
+  #     run:
+  #       working-directory: terraform
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+
+  #     - name: Setting up Terraform
+  #       uses: hashicorp/setup-terraform@v2
+  #       with:
+  #         terraform_version: 1.9.4
+
+  #     # - name: "Terraform Init"
+  #   run: terraform init -backend-config=config/terraform.backend.develop.tfvars
+
+  # - name: "Terraform plan"
+  #   run: terraform plan -var-file=config/terraform.develop.tfvars
