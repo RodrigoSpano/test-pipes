@@ -43,8 +43,19 @@ jobs:
     environment:
       name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
     steps:
+      - uses: actions/checkout@v2
       - name: First Step
         run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
+
+        # snyk integration
+      - uses: snyk/actions/setup@master
+      - name: Run Snyk to check configuration files for security issues
+        continue-on-error: true
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          file: terraform/config/terraform.develop.tfvars
 
   second-job:
     if: github.event.inputs.run_second_step == 'true'
