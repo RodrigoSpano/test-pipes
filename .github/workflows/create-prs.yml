@@ -34,7 +34,7 @@ jobs:
       - name: Create PR
         if: ${{ steps.diff_check.outputs.has_diff == 'true' }}
         run: |
-          git clone https://github.com/FirstClose /tmp
-          gh pr create --base develop --head main --title "super cool pr while listening Parcels" --body-file tmp/.github/PULL_REQUEST_TEMPLATE.md
+          git clone https://github.com/FirstClose /test
+          gh pr create --base develop --head main --title "super cool pr while listening Parcels" --body-file test/.github/PULL_REQUEST_TEMPLATE.md
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
