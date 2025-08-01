@@ -1,5 +1,5 @@
 # This GitHub Actions workflow keeps the current branch up to date with main branch (production infra).
-name: DR up to date with main
+name: Create pr to develop
 on:
   push:
     branches:
