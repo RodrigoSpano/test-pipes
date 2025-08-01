@@ -1,0 +1,39 @@
+# This GitHub Actions workflow keeps the current branch up to date with main branch (production infra).
+name: DR up to date with main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  merge-branch:
+    name: update DR branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Git configuration
+        run: |
+          git config --local user.email "rorrospano17@gmail.com"
+          git config --local user.name "ItOps"
+
+      - name: Check for diffs
+        id: diff_check
+        run: |
+          git fetch origin develop
+          git checkout develop
+          git diff --quiet main || echo "has_diff=true" >> $GITHUB_OUTPUT
+
+      - name: Create PR
+        if: ${{ steps.diff_check.outputs.has_diff == 'true' }}
+        run: |
+          gh pr create --base develop --head main --title "super cool pr while listening Parcels"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
