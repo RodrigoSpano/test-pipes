@@ -50,6 +50,6 @@ jobs:
       - name: Create PR
         if: ${{ steps.diff_check.outputs.has_diff == 'true' }}
         run: |
-          gh pr create --base develop --head main --title "super cool pr while listening Parcels" -F "${{ steps.pr_template.outputs.body }}"
+          gh pr create --base develop --head main --title "super cool pr while listening Parcels" --body "${{ steps.pr_template.outputs.body }}"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
