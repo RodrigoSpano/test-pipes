@@ -22,7 +22,7 @@ jobs:
       - name: Check out pr-template
         uses: actions/checkout@v4
         with:
-          repository: RodrigoSpano
+          repository: RodrigoSpano/RodrigoSpano
           ref: main
           path: pr-template-repo
           token: ${{ secrets.GH_PAT }}
