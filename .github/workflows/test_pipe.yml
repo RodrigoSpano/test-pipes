@@ -1,64 +1,64 @@
-name: test Pipeline
+# name: test Pipeline
 
-on:
-  push:
-    branches:
-      - main
-      - qa
-  pull_request:
-    branches:
-      - main
-      - qa
-  workflow_dispatch:
-    inputs:
-      run_second_step:
-        description: "Run second step"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "true"
-          - "false"
+# on:
+#   push:
+#     branches:
+#       - main
+#       - qa
+#   pull_request:
+#     branches:
+#       - main
+#       - qa
+#   workflow_dispatch:
+#     inputs:
+#       run_second_step:
+#         description: "Run second step"
+#         required: true
+#         default: "false"
+#         type: choice
+#         options:
+#           - "true"
+#           - "false"
 
-jobs:
-  Build:
-    runs-on: ubuntu-latest
-    outputs:
-      TF_ENVIRONMENT: ${{ steps.setvars.outputs.TF_ENVIRONMENT }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set Variables
-        id: setvars
-        run: |
-          if [[ "${{ github.base_ref }}" == "main" ]]; then
-            echo "TF_ENVIRONMENT=prod" >> $GITHUB_OUTPUT
-          else 
-            echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_OUTPUT
-          fi
+# jobs:
+#   Build:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       TF_ENVIRONMENT: ${{ steps.setvars.outputs.TF_ENVIRONMENT }}
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+#       - name: Set Variables
+#         id: setvars
+#         run: |
+#           if [[ "${{ github.base_ref }}" == "main" ]]; then
+#             echo "TF_ENVIRONMENT=prod" >> $GITHUB_OUTPUT
+#           else
+#             echo "TF_ENVIRONMENT=nonprod" >> $GITHUB_OUTPUT
+#           fi
 
-  first-job:
-    runs-on: ubuntu-latest
-    needs: [Build]
-    environment:
-      name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
-    steps:
-      - name: First Step
-        run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
-      - name: Check Snyk
-        uses: ./snyk.yaml@main
-        with:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#   first-job:
+#     runs-on: ubuntu-latest
+#     needs: [Build]
+#     environment:
+#       name: ${{ github.base_ref == 'main' && 'nonprod' || 'nonprod' }}
+#     steps:
+#       - name: First Step
+#         run: echo "${{ needs.Build.outputs.TF_ENVIRONMENT }}"
+#       - name: Check Snyk
+#         uses: ./snyk.yaml@main
+#         with:
+#           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  # test-job:
-  #   if: github.event.inputs.run_second_step == 'true'
-  #   uses: ./reusable.yml@main
-  #   with:
-  #     pepito: "paco"
+#   # test-job:
+#   #   if: github.event.inputs.run_second_step == 'true'
+#   #   uses: ./reusable.yml@main
+#   #   with:
+#   #     pepito: "paco"
 
-  second-job:
-    if: github.event.inputs.run_second_step == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Second Step
-        run: echo "second step"
+#   second-job:
+#     if: github.event.inputs.run_second_step == 'true'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Second Step
+#         run: echo "second step"
