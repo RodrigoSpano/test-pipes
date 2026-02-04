@@ -1,39 +1,39 @@
-name: Snyk scan
+# name: Snyk scan
 
-on:
-  push:
-    branches:
-      - iac-test
-  workflow_call:
-    inputs:
-      SNYK_TOKEN:
-        required: true
-        type: string
-        description: Snyk token
+# on:
+#   push:
+#     branches:
+#       - iac-test
+#   workflow_call:
+#     inputs:
+#       SNYK_TOKEN:
+#         required: true
+#         type: string
+#         description: Snyk token
 
-permissions: write-all
+# permissions: write-all
 
-jobs:
-  scan-iac:
-    name: snyk scan IaC
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform
-    steps:
-      - uses: actions/checkout@v2
+# jobs:
+#   scan-iac:
+#     name: snyk scan IaC
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: terraform
+#     steps:
+#       - uses: actions/checkout@v2
 
-      - uses: snyk/actions/setup@master
-      - name: Run Snyk to check configuration files for security issues
-        continue-on-error: true
-        uses: snyk/actions/iac@master
-        env:
-          SNYK_TOKEN: ${{ inputs.SNYK_TOKEN }}
-        with:
-          file: config/terraform.develop.tfvars
+#       - uses: snyk/actions/setup@master
+#       - name: Run Snyk to check configuration files for security issues
+#         continue-on-error: true
+#         uses: snyk/actions/iac@master
+#         env:
+#           SNYK_TOKEN: ${{ inputs.SNYK_TOKEN }}
+#         with:
+#           file: config/terraform.develop.tfvars
 
-      - name: Snyk scan code
-        continue-on-error: true
-        run: snyk code test
-        env:
-          SNYK_TOKEN: ${{ inputs.SNYK_TOKEN }}
+#       - name: Snyk scan code
+#         continue-on-error: true
+#         run: snyk code test
+#         env:
+#           SNYK_TOKEN: ${{ inputs.SNYK_TOKEN }}

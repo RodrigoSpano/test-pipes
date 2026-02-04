@@ -19,6 +19,22 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
+      - name: Check out pr-template
+        uses: actions/checkout@v4
+        with:
+          repository: RodrigoSpano/RodrigoSpano
+          ref: main
+          path: pr-template-repo
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Read PR template
+        id: pr_template
+        run: |
+          body=$(cat pr-template-repo/README.md)
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Git configuration
         run: |
           git config --local user.email "rorrospano17@gmail.com"
@@ -34,6 +50,6 @@ jobs:
       - name: Create PR
         if: ${{ steps.diff_check.outputs.has_diff == 'true' }}
         run: |
-          gh pr create --base develop --head main --title "super cool pr while listening Parcels"
+          gh pr create --base develop --head main --title "super cool pr while listening Parcels" --body "${{ steps.pr_template.outputs.body }}"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}

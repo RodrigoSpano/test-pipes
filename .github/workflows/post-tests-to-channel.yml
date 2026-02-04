@@ -1,0 +1,217 @@
+name: Daily Test Coverage Report
+
+on:
+  # schedule:
+    # - cron: '0 6 * * *' # Runs daily at 06:00 UTC
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  TEAMS_WEBHOOK_URL: ${{ secrets.TEST_COVERAGE_TEAMS_WEBHOOK_URL }}
+
+jobs:
+  discover-services:
+    name: Discover Microservices
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-matrix.outputs.services }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Find microservices
+        id: set-matrix
+        run: |
+          services=$(ls -d packages/*/ | sed 's#packages/##' | sed 's#/##' | \
+            jq -R -s -c 'split("\n")[:-1] | map(select(length > 0) | {name: ., path: ("packages/" + .)})')
+          
+          echo "services=$services" >> $GITHUB_OUTPUT
+          echo "Found services: $services"
+
+  run-tests:
+    name: Test ${{ matrix.service.name }}
+    needs: discover-services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # continue running all jobs even if some fail
+      matrix:
+        service: ${{ fromJson(needs.discover-services.outputs.services) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: "qa"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies for ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: yarn install --frozen-lockfile
+
+      - name: Run tests with coverage
+        id: test
+        working-directory: ${{ matrix.service.path }}
+        continue-on-error: true
+        run: |
+          yarn test:coverage -- --coverage --coverageReporters=json-summary --json --outputFile=tests-results.json || true
+
+      - name: Parse test results
+        id: parse-results
+        working-directory: ${{ matrix.service.path }}
+        run: |
+          cat > test-summary.json <<EOF
+          {
+            "service": "${{ matrix.service.name }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run_id": "${{ github.run_id }}",
+            "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "status": "${{ steps.test.outcome }}",
+            "tests": {
+              "total": $(jq '.numTotalTests // 0' tests-results.json 2>/dev/null || echo 0),
+              "passed": $(jq '.numPassedTests // 0' tests-results.json 2>/dev/null || echo 0),
+              "failed": $(jq '.numFailedTests // 0' tests-results.json 2>/dev/null || echo 0),
+              "skipped": $(jq '.numPendingTests // 0' tests-results.json 2>/dev/null || echo 0)
+            },
+            "coverage": {
+              "lines": $(jq '.total.lines.pct // 0' coverage/coverage-summary.json 2>/dev/null || echo 0),
+              "statements": $(jq '.total.statements.pct // 0' coverage/coverage-summary.json 2>/dev/null || echo 0),
+              "functions": $(jq '.total.functions.pct // 0' coverage/coverage-summary.json 2>/dev/null || echo 0),
+              "branches": $(jq '.total.branches.pct // 0' coverage/coverage-summary.json 2>/dev/null || echo 0)
+            }
+          }
+          EOF
+          
+          cat test-summary.json
+
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.service.name }}
+          path: ${{ matrix.service.path }}/test-summary.json
+          retention-days: 1
+
+  send-teams-notification:
+    name: Send Teams Notification
+    needs: run-tests
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: /tmp/test-results
+
+      - name: Consolidate results
+        id: consolidate
+        run: |
+          echo '[' > all-results.json
+          first=true
+          for file in /tmp/test-results/test-results-*/test-summary.json; do
+            if [ -f "$file" ]; then
+              if [ "$first" = true ]; then
+                first=false
+              else
+                echo ',' >> all-results.json
+              fi
+              cat "$file" >> all-results.json
+            fi
+          done
+          echo ']' >> all-results.json
+          
+          cat all-results.json
+          
+          # Calculate general stats
+          total_services=$(jq 'length' all-results.json)
+          passed_services=$(jq '[.[] | select(.status == "success")] | length' all-results.json)
+          failed_services=$(jq '[.[] | select(.status == "failure")] | length' all-results.json)
+          
+          echo "total_services=$total_services" >> $GITHUB_OUTPUT
+          echo "passed_services=$passed_services" >> $GITHUB_OUTPUT
+          echo "failed_services=$failed_services" >> $GITHUB_OUTPUT
+
+      - name: Generate Teams message
+        id: teams-message
+        run: |
+          # Determine theme color based on failures
+          if [ "${{ steps.consolidate.outputs.failed_services }}" -gt 0 ]; then
+            THEME_COLOR="FF0000"
+          else
+            THEME_COLOR="00FF00"
+          fi
+          
+          # Create base payload
+          cat > teams-payload.json <<EOF
+          {
+            "@type": "MessageCard",
+            "@context": "https://schema.org/extensions",
+            "summary": "Daily Test Coverage Report",
+            "themeColor": "${THEME_COLOR}",
+            "title": "📊 Daily Test Coverage Report",
+            "sections": [
+              {
+                "activityTitle": "Test Execution Summary",
+                "activitySubtitle": "$(date -u +%Y-%m-%d) at $(date -u +%H:%M) UTC",
+                "facts": [
+                  {
+                    "name": "Total Services",
+                    "value": "${{ steps.consolidate.outputs.total_services }}"
+                  },
+                  {
+                    "name": "✅ Passed",
+                    "value": "${{ steps.consolidate.outputs.passed_services }}"
+                  },
+                  {
+                    "name": "❌ Failed",
+                    "value": "${{ steps.consolidate.outputs.failed_services }}"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+          
+          # Microservices stats
+          jq -r '.[] | 
+          {
+            "activityTitle": ("🔧 " + .service),
+            "facts": [
+              {"name": "Status", "value": (if .status == "success" then "✅ Passed" else "❌ Failed" end)},
+              {"name": "Total Tests", "value": (.tests.total | tostring)},
+              {"name": "Passed", "value": (.tests.passed | tostring)},
+              {"name": "Failed", "value": (.tests.failed | tostring)},
+              {"name": "Skipped", "value": (.tests.skipped | tostring)},
+              {"name": "Coverage Lines", "value": ((.coverage.lines | tostring) + "%")},
+              {"name": "Coverage Statements", "value": ((.coverage.statements | tostring) + "%")},
+              {"name": "Coverage Functions", "value": ((.coverage.functions | tostring) + "%")}
+            ],
+            "text": ("[View Details](" + .run_url + ")")
+          }' all-results.json | jq -s '.' > sections.json
+          
+          # Combine everything into the final payload
+          jq --slurpfile sections sections.json \
+          '.sections += $sections[0] | 
+          .potentialAction = [{
+            "@type": "OpenUri",
+            "name": "View Full Report",
+            "targets": [{
+              "os": "default",
+              "uri": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }]
+          }]' teams-payload.json > final-payload.json
+          
+          cat final-payload.json
+
+      - name: Send to Teams
+        run: |
+          curl -H 'Content-Type: application/json' \
+          -d @final-payload.json \
+          "${{ env.TEAMS_WEBHOOK_URL }}"
+
